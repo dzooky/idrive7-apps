@@ -3,11 +3,13 @@
 /**
  * Oil Service Assistant
  *
- * Engine and transmission temperature pages. Transmission data is read from
- * the verified EGS variant using the shared read-only diagnostic transport.
+ * Engine oil temperature comes from BMW's native CDS vehicle signal.
+ * Transmission oil temperature is read from the verified EGS variant using
+ * the shared read-only diagnostic transport.
  */
 const mgu = require('./kit/mgu');
 const G = require('./kit/gauges');
+const Car = require('./kit/car');
 const { withAlpha } = require('./kit/canvas');
 const TransmissionReader = require('./transmission');
 
@@ -17,6 +19,7 @@ mgu.run({
     async start(ctx) {
         const { ui, log } = ctx;
         let page = 0;
+        const car = new Car(ctx, ['temps']);
         const transmission = new TransmissionReader(ctx);
 
         function render() {
@@ -24,9 +27,14 @@ mgu.run({
             const cv = ctx.canvas(W, H).clear(t.bg);
 
             if (page === 0) {
+                const d = car.data();
+                const oil = G.isNum(d.oil) ? d.oil : null;
+                const status = oil === null ? 'WAITING FOR OIL DATA' : (d.demo ? 'DEMO DATA' : 'LIVE');
+                const statusColor = oil === null ? t.dim : (d.demo ? t.warn : t.ok);
+
                 G.segBar(cv, t, 24, 44, 880, 468, {
                     label: 'Engine oil',
-                    value: null,
+                    value: oil,
                     unit: '°C',
                     decimals: 0,
                     min: 0,
@@ -42,13 +50,13 @@ mgu.run({
                 });
 
                 G.panel(cv, t, 928, 44, 648, 468, null);
-                cv.roundRect(952, 70, 600, 60, 10, withAlpha(t.dim, 0.16));
-                cv.text('ENGINE OIL DATA NOT CONNECTED', 1252, 110, 29, t.dim, {
+                cv.roundRect(952, 70, 600, 60, 10, withAlpha(statusColor, 0.16));
+                cv.text(status, 1252, 110, 29, statusColor, {
                     align: 'center', font: 'bold', spacing: 1
                 });
                 cv.text('Engine oil temperature', 952, 190, 24, t.dim);
-                cv.text('Oil Service Assistant', 952, 258, 34, t.text, { font: 'bold' });
-                cv.text('Temperature monitoring and service assistance', 952, 300, 22, t.dim);
+                cv.text(oil === null ? '-- °C' : (Math.round(oil) + ' °C'), 952, 258, 48, t.text, { font: 'bold' });
+                cv.text('BMW native vehicle signal · CDS', 952, 320, 21, t.dim);
             } else {
                 const live = transmission.fresh;
                 const status = live ? 'LIVE' :
