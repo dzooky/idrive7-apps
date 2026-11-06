@@ -8,6 +8,7 @@
  */
 const mgu = require('./kit/mgu');
 const G = require('./kit/gauges');
+const { withAlpha } = require('./kit/canvas');
 
 const W = 1600, H = 520;
 
