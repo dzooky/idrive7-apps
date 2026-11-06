@@ -73,8 +73,8 @@ mgu.run({
                 });
 
                 G.panel(cv, t, 928, 44, 648, 468, null);
-                cv.roundRect(952, 70, 600, 60, 10, withAlpha(live ? t.good : t.dim, 0.16));
-                cv.text(status, 1252, 110, 30, live ? t.good : t.dim, {
+                cv.roundRect(952, 70, 600, 60, 10, withAlpha(live ? t.ok : t.dim, 0.16));
+                cv.text(status, 1252, 110, 30, live ? t.ok : t.dim, {
                     align: 'center', font: 'bold', spacing: 2
                 });
 
