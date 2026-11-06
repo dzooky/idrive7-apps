@@ -3,12 +3,13 @@
 /**
  * Oil Service Assistant
  *
- * Two-page UI shell styled to match Warm-Up.
- * Vehicle signals and service functions will be connected incrementally.
+ * Engine and transmission temperature pages. Transmission data is read from
+ * the verified EGS variant using the shared read-only diagnostic transport.
  */
 const mgu = require('./kit/mgu');
 const G = require('./kit/gauges');
 const { withAlpha } = require('./kit/canvas');
+const TransmissionReader = require('./transmission');
 
 const W = 1600, H = 520;
 
@@ -16,13 +17,13 @@ mgu.run({
     async start(ctx) {
         const { ui, log } = ctx;
         let page = 0;
+        const transmission = new TransmissionReader(ctx);
 
         function render() {
             const t = ctx.theme();
             const cv = ctx.canvas(W, H).clear(t.bg);
 
             if (page === 0) {
-                // ENGINE page
                 G.segBar(cv, t, 24, 44, 880, 468, {
                     label: 'Engine oil',
                     value: null,
@@ -42,17 +43,21 @@ mgu.run({
 
                 G.panel(cv, t, 928, 44, 648, 468, null);
                 cv.roundRect(952, 70, 600, 60, 10, withAlpha(t.dim, 0.16));
-                cv.text('WAITING FOR OIL DATA', 1252, 110, 32, t.dim, {
-                    align: 'center', font: 'bold', spacing: 2
+                cv.text('ENGINE OIL DATA NOT CONNECTED', 1252, 110, 29, t.dim, {
+                    align: 'center', font: 'bold', spacing: 1
                 });
                 cv.text('Engine oil temperature', 952, 190, 24, t.dim);
                 cv.text('Oil Service Assistant', 952, 258, 34, t.text, { font: 'bold' });
                 cv.text('Temperature monitoring and service assistance', 952, 300, 22, t.dim);
             } else {
-                // TRANSMISSION page
+                const live = transmission.fresh;
+                const status = live ? 'LIVE' :
+                    transmission.statusText === 'LIVE' ? 'LINK STALE' : transmission.statusText;
+                const value = live ? transmission.temp : null;
+
                 G.segBar(cv, t, 24, 44, 880, 468, {
                     label: 'Transmission oil',
-                    value: null,
+                    value,
                     unit: '°C',
                     decimals: 0,
                     min: 0,
@@ -68,13 +73,19 @@ mgu.run({
                 });
 
                 G.panel(cv, t, 928, 44, 648, 468, null);
-                cv.roundRect(952, 70, 600, 60, 10, withAlpha(t.dim, 0.16));
-                cv.text('WAITING FOR TRANSMISSION DATA', 1252, 110, 29, t.dim, {
-                    align: 'center', font: 'bold', spacing: 1.5
+                cv.roundRect(952, 70, 600, 60, 10, withAlpha(live ? t.good : t.dim, 0.16));
+                cv.text(status, 1252, 110, 30, live ? t.good : t.dim, {
+                    align: 'center', font: 'bold', spacing: 2
                 });
-                cv.text('Transmission temperature', 952, 190, 24, t.dim);
-                cv.text('ZF 8HP service assistance', 952, 258, 34, t.text, { font: 'bold' });
-                cv.text('Temperature and service-procedure readiness', 952, 300, 22, t.dim);
+
+                cv.text('Transmission oil temperature', 952, 190, 24, t.dim);
+                cv.text(live ? (value + ' °C') : '-- °C', 952, 258, 48, t.text, { font: 'bold' });
+                cv.text(transmission.sgbd ? ('EGS ' + transmission.sgbd) : 'ZF 8HP · EGS identification', 952, 310, 22, t.dim);
+                if (transmission.error) {
+                    cv.text(transmission.error, 952, 370, 19, t.warn, { maxWidth: 590 });
+                } else {
+                    cv.text('Read-only live data · DID 6000', 952, 370, 19, t.dim);
+                }
             }
 
             G.frame(cv, t, ['Engine', 'Transmission'], page, []);
@@ -89,6 +100,12 @@ mgu.run({
         ui.onClick('BTN_PAGE', () => switchPage(1 - page));
         ui.onClick('BTN_PREV', () => switchPage(1 - page));
         ctx.onTab((i) => i !== page && switchPage(i));
+
+        ui.onVisible((name, on) => {
+            if (name === 'MAIN') transmission.setVisible(on);
+        });
+        transmission.setVisible(ui.isVisible('MAIN'));
+        transmission.init().catch((e) => log.warn('OSA diagnostic link: ' + e));
 
         ctx.loop('MAIN', 4, render);
         render()
