@@ -3,8 +3,8 @@
 /**
  * Oil Service Assistant
  *
- * Initial application shell. Live vehicle signals and service functions
- * will be added incrementally after their availability is verified.
+ * Initial UI shell styled to match the Warm-Up app.
+ * Vehicle signals and service functions will be connected incrementally.
  */
 const mgu = require('./kit/mgu');
 const G = require('./kit/gauges');
@@ -15,22 +15,45 @@ mgu.run({
     async start(ctx) {
         const { ui, log } = ctx;
 
-        async function render() {
+        function render() {
             const t = ctx.theme();
             const cv = ctx.canvas(W, H).clear(t.bg);
 
-            G.frame(cv, t, ['Engine oil'], 0, []);
-            G.panel(cv, t, 24, 72, 1552, 416, 'Oil temperature');
+            // Left: the same segmented temperature panel used by Warm-Up.
+            G.segBar(cv, t, 24, 44, 880, 468, {
+                label: 'Engine oil',
+                value: null,
+                unit: '°C',
+                decimals: 0,
+                min: 0,
+                max: 150,
+                step: 10,
+                scale: { every: 25 },
+                zones: [
+                    { from: 120, to: 135, color: 'warn' },
+                    { from: 135, to: 150, color: 'crit' }
+                ],
+                ramp: 'hot',
+                limit: 120
+            });
 
-            cv.text('--', 72, 236, 104, t.dim, { font: 'num' });
-            cv.text('°C', 238, 236, 34, t.dim);
-            cv.text('LIVE DATA NOT CONNECTED', 72, 316, 22, t.dim, { font: 'bold', spacing: 1.5 });
-            cv.text('Oil Service Assistant', 1528, 448, 22, t.accent, { align: 'right', font: 'bold' });
+            // Right: service-assistance status panel, ready for live information.
+            G.panel(cv, t, 928, 44, 648, 468, null);
+            cv.roundRect(952, 70, 600, 60, 10, withAlpha(t.dim, 0.16));
+            cv.text('WAITING FOR OIL DATA', 1252, 110, 32, t.dim, {
+                align: 'center',
+                font: 'bold',
+                spacing: 2
+            });
+            cv.text('Vehicle data will appear here', 952, 190, 24, t.dim);
+            cv.text('Oil Service Assistant', 952, 258, 34, t.text, { font: 'bold' });
+            cv.text('Temperature monitoring and service assistance', 952, 300, 22, t.dim);
 
-            await ui.image('MAIN_GFX', cv);
+            G.frame(cv, t, ['Oil Service'], 0, []);
+            return ui.image('MAIN_GFX', cv);
         }
 
-        ctx.loop('MAIN', 10, render);
+        ctx.loop('MAIN', 4, render);
         render()
             .then(() => log.info('OSA first frame rendered'))
             .catch((e) => log.warn('OSA first render: ' + e));
