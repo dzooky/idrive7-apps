@@ -114,6 +114,9 @@
       "_broadcasts": [
         "sendTasuResponse"
       ]
+    },
+    "de.bmw.infotainment.vehicle.CDS": {
+      "statusEngineTemperature": "rs"
     }
   }
 }
