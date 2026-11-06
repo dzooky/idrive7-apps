@@ -83,8 +83,6 @@ mgu.run({
 
         const switchPage = (next) => {
             page = next;
-            ui.text('BTN_PAGE', page === 0 ? 'Transmission' : 'Engine');
-            ui.text('BTN_PREV', page === 0 ? 'Transmission' : 'Engine');
             return render();
         };
 
