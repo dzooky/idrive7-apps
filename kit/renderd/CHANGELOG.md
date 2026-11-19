@@ -1,5 +1,15 @@
 # mgu-render changelog
 
+## Unreleased
+
+- The controller gate (`mgu-inputgate.so`) follows the HMI's knob re-centres. Once an app had held the knob, the gate took the turns made meanwhile off every later knob position for the rest of the HMI's run; when the HMI re-centred the knob (the car woken, the display on or off, a controller overflow) it took 0x7fff as the last position it saw, so the next turn reached it as one jump of about that many detents (seen as the Surround View camera ring cycling on its own, robertnisipeanu/mgu-store#326). The gate drops that offset at each re-centre: the HMI's `rotaryEncoderControl` setter with `frontMidPositionValueSet` = 1, or an overflow event that moves the knob. The position it gives the HMI stays within 0..0xfffe, so it never wraps past 0 / 65535 (a jump of ~65,000 detents to the HMI). Store tool `mgu-inputgate` 1.2.1.
+
+## idrive7-apps mgu-renderd 2.1.19
+
+- The controller gate's file is emptied when this renderer holds the controller (it was only touched): an empty file holds the whole controller, so part words another renderer may have left behind (mgu-store's mgu-render, with gate 1.2.0) can't make our apps hold only some parts.
+- Controller gate 1.2.0's boot guard keeps every other LD_PRELOAD library of the HMI: the unit's own and the ones other drop-ins read from their EnvironmentFile (another preload tool's /run/<id>.env); it kept only Environment= lines, so two preload tools would have cancelled each other.
+- The controller gate (`mgu-inputgate.so`) can hold parts of the iDrive controller: the words `knob`, `press`, `tilt` in its file (`/run/mgu-renderd/inputgate`) name what the HMI doesn't get while an app grabs it; the parts not named stay the HMI's (an app that holds the knob and the press still lets a tilt leave it). An empty file, what every renderer writes today, holds all three as before, and so do words it doesn't know. The library carries the marker `mgu-inputgate-hold:` for renderers to find (mgu-store's mgu-render offers `controllerHold` then). Our apps don't name parts, so they keep the whole controller. Store tool `mgu-inputgate` 1.2.0 (rebuilt; a new version also clears the boot guard's strikes).
+
 ## idrive7-apps mgu-renderd 2.1.18
 
 - The controller gate on iDrive 8 (to try, issue #152): whether the gate is loaded is now looked up in Hmi8 too (iDrive 8's HMI; HmiMain3D on iDrive 7), so apps there are offered the controller once `mgu-inputgate.so` runs in it. The HMI's surface is still looked up by `hmi_process` only (unchanged layout on iDrive 8).
